@@ -25,7 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@AutoConfigureMockMvc
 class AirportControllerIT {
 
     @Autowired
@@ -42,107 +41,92 @@ class AirportControllerIT {
         airportRepository.deleteAll();
     }
 
-    private String createAirport(AirportRequest request) throws Exception {
+    private AirportRequest airportRequest(String name, String code, String city, String country) {
+        AirportRequest request = new AirportRequest();
+        request.setName(name);
+        request.setCode(code);
+        request.setCity(city);
+        request.setCountry(country);
+        return request;
+    }
+
+    private MvcResult createAirport(AirportRequest request) throws Exception {
         return mockMvc.perform(post("/api/airports"))
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(airportRequest)))
-            .andExpect(status().isCreated());
-            .andReturn().getResponse().getContentAsString();
+            .content(objectMapper.writeValueAsString(request))
+            .andExpect(status().isCreated())
+            .andReturn();
     }
 
-
+    private Long createAirportAndGetId(AirportRequest request) throws Exception {
+        JsonNode jsonNode = objectMapper.readTree(createAirport(request).getResponse().getContentAsString());
+        return jsonNode.get("id").asLong();
     }
 
+    // ACTIVIDAD
+
+    // shouldCreateAirport — Crear un aeropuerto y verificar HTTP 201 + datos en la respuesta
     @Test
     void shouldCreateAirport() throws Exception {
         //Arrange
-        AirportRequest airportRequest = new AirportRequest();
-        airportRequest.setName("Aeropuerto Mariscal Sucre");
-        airportRequest.setCity("Quito");
-        airportRequest.setCode("UIO");
-        airportRequest.setCountry("Ecuador");
+        AirportRequest airportRequest = airportRequest("Aeropuerto Mariscal Sucre", "UIO", "Quito", "Ecuador");
         //Act + Assert
-        mockMvc.perform(post("/api/airports"))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(airportRequest)))
-            .andExpect(status().isCreated());
+        createAirport(airportRequest)
             .andExpect(jsonPath("$.name").value("Aeropuerto Mariscal Sucre"))
             .andExpect(jsonPath("$.code").value("UIO"))
             .andExpect(jsonPath("$.city").value("Quito"))
-            .andExpect(jsonPath("$.country").value("Ecuador"));
+            .andExpect(jsonPath("$.country").value("Ecuador"))
             .andExpect(jsonPath("$.id").isNumber());
     }
 
+    // shouldRejectDuplicateAirportCode — Intentar crear dos aeropuertos con el mismo código IATA
     @Test
-    void shouldDeleteAirport() throws Exception {
-        //Arrange
-        AirportRequest airportRequest = new AirportRequest();
-        airportRequest.setName("Santiago de Chile");
-        airportRequest.setCity("Santiago");
-        airportRequest.setCode("SCL");
-        airportRequest.setCountry("Chile");
-        //Act + Assert
-        String response = createAirport(airportRequest);
-        Long id = objectMapper.readTree(response).get("id").asLong();
-        mockMvc.perform(delete("/api/airport/", id))
-            .andExpect(status().isNoContent());
-
-        mockMvc.perform(get("/api/airport/", id))
-            .andExpect(status().isNoContent());
-    }
-
-    @Test
-    void shouldUpdateAirport() throws Exception {
-         //Arrange
-        AirportRequest airportRequest = new AirportRequest();
-        airportRequest.setName("Santiago de Chile");
-        airportRequest.setCity("Santiago");
-        airportRequest.setCode("SCL");
-        airportRequest.setCountry("Chile");
-        //Act + Assert
-        String response = createAirport(airportRequest);
-        Long id = objectMapper.readTree(response).get("id").asLong();
-        airportRequest.setName("Santiago de Chile - Aeropuerto Internacional");
-        mockMvc.perform(put("/api/airport/", id)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(airportRequest)))
-    }
-
-
-    /*@Test
     void shouldRejectDuplicateAirportCode() throws Exception {
-        AirportRequest firstRequest = airportRequest("Aeropuerto de Quito", "UIO", "Quito", "Ecuador");
-        AirportRequest duplicateRequest = airportRequest("Otro Aeropuerto", "UIO", "Guayaquil", "Ecuador");
+        //Arrange
+        //Aeropuerto uno
+        AirportRequest airportRequest = airportRequest("Aeropuerto Mariscal Sucre", "UIO", "Quito", "Ecuador");
+
+        //Aeropuerto dos
+        AirportRequest airportRequestTwo = airportRequest("Aeropuerto Mariscal Sucre duplicado", "UIO", "Guayaquil", "Ecuador");
+
+        //Act + Assert
+        //comprobar ambos aeropuertos
+        createAirport(airportRequest);
 
         mockMvc.perform(post("/api/airports")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(firstRequest)))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/api/airports")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(duplicateRequest)))
+                        .content(objectMapper.writeValueAsString(airportRequestTwo)))
+        //Esperar prohibición 
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.message", containsString("El código de aeropuerto ya existe")));
     }
 
+    //shouldFindAllAirports — Listar todos los aeropuertos (crea 2 antes)
     @Test
     void shouldFindAllAirports() throws Exception {
-        createAirportAndGetId("Aeropuerto de Quito", "UIO", "Quito", "Ecuador");
-        createAirportAndGetId("Aeropuerto de Guayaquil", "GYE", "Guayaquil", "Ecuador");
+        //Arrange
+        AirportRequest airportRequest = airportRequest("Aeropuerto Mariscal Sucre", "UIO", "Quito", "Ecuador");
+        AirportRequest airportRequestTwo = airportRequest("Aeropuerto Internacional John F. Kennedy", "NYC", "New York", "United States");
 
+        createAirport(airportRequest);
+        createAirport(airportRequestTwo);
+
+        //Act + Assert
         mockMvc.perform(get("/api/airports"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[*].code", containsInAnyOrder("UIO", "GYE")));
+                .andExpect(jsonPath("$[*].code", containsInAnyOrder("UIO", "NYC")));
     }
 
+    //shouldFindAirportById — Buscar por ID y verificar los datos
     @Test
     void shouldFindAirportById() throws Exception {
-        Long airportId = createAirportAndGetId("Aeropuerto de Quito", "UIO", "Quito", "Ecuador");
-
+        //Arrange
+        AirportRequest airportRequest = airportRequest("Aeropuerto de Quito", "UIO", "Quito", "Ecuador");
+        Long airportId = createAirportAndGetId(airportRequest);
+        //Act + Assert
         mockMvc.perform(get("/api/airports/{id}", airportId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(airportId))
@@ -152,6 +136,7 @@ class AirportControllerIT {
                 .andExpect(jsonPath("$.country").value("Ecuador"));
     }
 
+    //shouldFindAirportByCode — Buscar por código IATA
     @Test
     void shouldFindAirportByCode() throws Exception {
         createAirportAndGetId("Aeropuerto de Quito", "UIO", "Quito", "Ecuador");
@@ -164,16 +149,51 @@ class AirportControllerIT {
                 .andExpect(jsonPath("$.country").value("Ecuador"));
     }
 
+    //shouldReturn404WhenAirportNotFound — Buscar un ID inexistente → HTTP 404
     @Test
     void shouldReturn404WhenAirportNotFound() throws Exception {
+        //Act + Assert
         mockMvc.perform(get("/api/airports/{id}", 99999L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message", containsString("Aeropuerto no encontrado con id")));
     }
-    
 
+    //shouldUpdateAirport — Actualizar y verificar los cambios
+    @Test
+    void shouldUpdateAirport() throws Exception {
+         //Arrange
+        AirportRequest airportRequest = airportRequest("Santiago de Chile", "SCL", "Santiago", "Chile");
+        //Act + Assert
+        Long id = createAirportAndGetId(airportRequest);
+        airportRequest.setName("Santiago de Chile - Aeropuerto Internacional");
+        mockMvc.perform(put("/api/airports/{id}", id)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(airportRequest)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.name").value("Santiago de Chile - Aeropuerto Internacional"))
+            .andExpect(jsonPath("$.code").value("SCL"));
+    }
+
+    //shouldDeleteAirport — Eliminar y verificar que ya no existe (GET → 404)
+    @Test
+    void shouldDeleteAirport() throws Exception {
+        //Arrange
+        AirportRequest airportRequest = airportRequest("Santiago de Chile", "SCL", "Santiago", "Chile");
+        //Act + Assert
+        Long id = createAirportAndGetId(airportRequest);
+        mockMvc.perform(delete("/api/airports/{id}", id))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/airports/{id}", id))
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(status().isNotFound());
+    }
+
+    //shouldRejectInvalidAirportRequest — Enviar datos inválidos y verificar HTTP 400
     @Test
     void shouldRejectInvalidAirportRequest() throws Exception {
         AirportRequest invalidRequest = airportRequest("", "AB", "", "");
@@ -186,26 +206,4 @@ class AirportControllerIT {
                 .andExpect(jsonPath("$.error").value("Validation Error"))
                 .andExpect(jsonPath("$.errors", hasSize(4)));
     }
-
-    private Long createAirportAndGetId(String name, String code, String city, String country) throws Exception {
-        AirportRequest request = airportRequest(name, code, city, country);
-
-        MvcResult result = mockMvc.perform(post("/api/airports")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        JsonNode jsonNode = objectMapper.readTree(result.getResponse().getContentAsString());
-        return jsonNode.get("id").asLong();
-    }
-
-    private AirportRequest airportRequest(String name, String code, String city, String country) {
-        AirportRequest request = new AirportRequest();
-        request.setName(name);
-        request.setCode(code);
-        request.setCity(city);
-        request.setCountry(country);
-        return request;
-    }*/
 }
