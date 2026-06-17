@@ -11,7 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -50,16 +50,17 @@ class AirportControllerIT {
         return request;
     }
 
-    private MvcResult createAirport(AirportRequest request) throws Exception {
-        return mockMvc.perform(post("/api/airports"))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
-            .andExpect(status().isCreated())
-            .andReturn();
+private ResultActions createAirport(AirportRequest request) throws Exception {
+        return mockMvc.perform(post("/api/airports")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
     }
 
     private Long createAirportAndGetId(AirportRequest request) throws Exception {
-        JsonNode jsonNode = objectMapper.readTree(createAirport(request).getResponse().getContentAsString());
+        JsonNode jsonNode = objectMapper.readTree(createAirport(request)
+                .andReturn() 
+                .getResponse().getContentAsString());
         return jsonNode.get("id").asLong();
     }
 
@@ -139,7 +140,7 @@ class AirportControllerIT {
     //shouldFindAirportByCode — Buscar por código IATA
     @Test
     void shouldFindAirportByCode() throws Exception {
-        createAirportAndGetId("Aeropuerto de Quito", "UIO", "Quito", "Ecuador");
+        createAirportAndGetId(airportRequest("Aeropuerto de Quito", "UIO", "Quito", "Ecuador"));
 
         mockMvc.perform(get("/api/airports/code/{code}", "UIO"))
                 .andExpect(status().isOk())

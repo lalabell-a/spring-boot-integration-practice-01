@@ -1,3 +1,25 @@
+package ec.edu.epn.integration;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import ec.edu.epn.dto.AirportRequest;
+import ec.edu.epn.dto.PassengerRequest;
+import ec.edu.epn.repository.PassengerRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 class PassengerControllerIT {
@@ -7,6 +29,9 @@ class PassengerControllerIT {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private PassengerRepository passengerRepository;
 
     private PassengerRequest passengerRequest(String firstName, String lastName, String email) {
         PassengerRequest request = new PassengerRequest();
@@ -25,7 +50,29 @@ class PassengerControllerIT {
         return request;
     }
 
+    @BeforeEach
+    void setUp() {
+        passengerRepository.deleteAll();
+    }
+
+private ResultActions createPassenger(PassengerRequest request) throws Exception {
+        // El paréntesis ahora encierra correctamente a contentType y content
+        return mockMvc.perform(post("/api/passengers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
+    }
+
+    private Long createPassengerAndGetId(PassengerRequest request) throws Exception {
+        // Agregamos .andReturn() aquí para obtener el MvcResult antes de leer el JSON
+        JsonNode jsonNode = objectMapper.readTree(createPassenger(request)
+                .andReturn()
+                .getResponse().getContentAsString());
+        return jsonNode.get("id").asLong();
+    }
+
     //shouldCreatePassenger — Crear un pasajero y verificar HTTP 201
+    @Test
     void shouldCreatePassenger() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -38,6 +85,7 @@ class PassengerControllerIT {
     }
 
     // shouldRejectDuplicateEmail — Intentar crear dos pasajeros con el mismo email
+    @Test
     void shouldRejectDuplicateEmail() throws Exception {
         //Arrange
         PassengerRequest request1 = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -59,6 +107,7 @@ class PassengerControllerIT {
     }
 
     // shouldFindAllPassengers — Listar todos los pasajeros
+    @Test
     void shouldFindAllPassengers() throws Exception {
         //Arrange
         PassengerRequest request1 = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -81,6 +130,7 @@ class PassengerControllerIT {
     }
 
     // shouldFindPassengerById — Buscar por ID
+    @Test
     void shouldFindPassengerById() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -96,6 +146,7 @@ class PassengerControllerIT {
     }
 
     // shouldFindPassengerByEmail — Buscar por email
+    @Test
     void shouldFindPassengerByEmail() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -111,6 +162,7 @@ class PassengerControllerIT {
     }
 
     // shouldFindPassengerByPassportNumber — Buscar por número de pasaporte
+    @Test
     void shouldFindPassengerByPassportNumber() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -126,6 +178,7 @@ class PassengerControllerIT {
     }
 
     // shouldReturn404WhenPassengerNotFound — Pasajero inexistente → HTTP 404
+    @Test
     void shouldReturn404WhenPassengerNotFound() throws Exception {
         //Act + Assert
         mockMvc.perform(get("/api/passengers/{id}", 99999L))
@@ -136,6 +189,7 @@ class PassengerControllerIT {
     }
 
     // shouldUpdatePassenger — Actualizar datos del pasajero
+    @Test
     void shouldUpdatePassenger() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -153,6 +207,7 @@ class PassengerControllerIT {
     }
 
     // shouldDeletePassenger — Eliminar y verificar que ya no existe
+    @Test
     void shouldDeletePassenger() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
@@ -164,6 +219,7 @@ class PassengerControllerIT {
     }
 
     // shouldRejectInvalidEmail — Enviar email inválido y verificar HTTP 400
+    @Test
     void shouldRejectInvalidEmail() throws Exception {
         //Arrange
         PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "invalid-email");

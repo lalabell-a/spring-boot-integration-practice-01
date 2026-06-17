@@ -1,4 +1,28 @@
+package ec.edu.epn.integration;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import ec.edu.epn.dto.AirportRequest;
 import ec.edu.epn.dto.FlightRequest;
+import ec.edu.epn.repository.AirportRepository;
+import ec.edu.epn.repository.FlightRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import java.time.LocalDateTime;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -10,7 +34,16 @@ class FlightControllerIT {
     @Autowired
     private ObjectMapper objectMapper;
 
-     private AirportRequest airportRequest(String name, String code, String city, String country) {
+    @Autowired
+    private AirportRepository airportRepository;
+
+    @Autowired
+    private FlightRepository flightRepository;
+
+    private AirportRequest airportRequest;
+    private AirportRequest airportRequestTwo;
+
+    private AirportRequest airportRequestBuilder(String name, String code, String city, String country) {
         AirportRequest request = new AirportRequest();
         request.setName(name);
         request.setCode(code);
@@ -19,21 +52,52 @@ class FlightControllerIT {
         return request;
     }
 
-    private FlightRequest flightRequest(String flightNumber, Long departureAirportId, Long arrivalAirportId) {
+    private FlightRequest flightRequest(String flightNumber, Long originId, Long destinationId) {
         FlightRequest request = new FlightRequest();
         request.setFlightNumber(flightNumber);
-        request.setDepartureAirportId(departureAirportId);
-        request.setArrivalAirportId(arrivalAirportId);
+        request.setOriginId(originId); 
+        request.setDestinationId(destinationId);
         return request;
     }
 
     @BeforeEach
     void setUp() {
-        airportRequest = airportRequest("Aeropuerto Mariscal Sucre", "UIO", "Quito", "Ecuador");
-        airportRequestTwo = airportRequest("Aeropuerto Internacional John F. Kennedy", "NYC", "New York", "United States");
+        flightRepository.deleteAll();
+        airportRepository.deleteAll();
+        airportRequest = airportRequestBuilder("Aeropuerto Mariscal Sucre", "UIO", "Quito", "Ecuador");
+        airportRequestTwo = airportRequestBuilder("Aeropuerto Internacional John F. Kennedy", "NYC", "New York", "United States");
+    }
+
+private ResultActions createAirport(AirportRequest request) throws Exception {
+        return mockMvc.perform(post("/api/airports")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
+    }
+
+    private Long createAirportAndGetId(AirportRequest request) throws Exception {
+        JsonNode jsonNode = objectMapper.readTree(createAirport(request)
+                .andReturn() // Lo agregamos aquí
+                .getResponse().getContentAsString());
+        return jsonNode.get("id").asLong();
+    }
+
+    private ResultActions createFlight(FlightRequest request) throws Exception {
+        return mockMvc.perform(post("/api/flights")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
+    }
+
+    private Long createFlightAndGetId(FlightRequest request) throws Exception {
+        JsonNode jsonNode = objectMapper.readTree(createFlight(request)
+                .andReturn() // Lo agregamos aquí
+                .getResponse().getContentAsString());
+        return jsonNode.get("id").asLong();
     }
 
     //shouldCreateFlight — Crear un vuelo (necesitas crear aeropuertos primero en @BeforeEach)
+    @Test
     void shouldCreateFlight() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -56,6 +120,7 @@ class FlightControllerIT {
     }
 
     //shouldRejectDuplicateFlightNumber — Intentar crear dos vuelos con el mismo número
+    @Test
     void shouldRejectDuplicateFlightNumber() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -79,6 +144,7 @@ class FlightControllerIT {
     }
 
     //shouldRejectArrivalBeforeDeparture — Validar que la llegada no sea antes de la salida
+    @Test
     void shouldRejectArrivalBeforeDeparture() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -97,6 +163,7 @@ class FlightControllerIT {
     }
 
     //shouldFindAllFlights — Listar todos los vuelos
+    @Test
     void shouldFindAllFlights() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -124,6 +191,7 @@ class FlightControllerIT {
     }
 
     //shouldFindFlightById — Buscar por ID
+    @Test
     void shouldFindFlightById() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -145,6 +213,7 @@ class FlightControllerIT {
     }
 
     //shouldFindFlightByFlightNumber — Buscar por número de vuelo
+    @Test
     void shouldFindFlightByFlightNumber() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -165,6 +234,7 @@ class FlightControllerIT {
     }
 
     //shouldFindFlightsByStatus — Filtrar por estado
+    @Test
     void shouldFindFlightsByStatus() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -184,6 +254,7 @@ class FlightControllerIT {
     }
 
     //shouldFindFlightsBetweenDates — Buscar vuelos en un rango de fechas
+    @Test
     void shouldFindFlightsBetweenDates() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -207,6 +278,7 @@ class FlightControllerIT {
     }
 
     //shouldUpdateFlight — Actualizar estado del vuelo
+    @Test
     void shouldUpdateFlight() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
@@ -230,6 +302,7 @@ class FlightControllerIT {
     }
 
     //shouldReturn404WhenFlightNotFound — Flight inexistente → HTTP 404
+    @Test
     void shouldReturn404WhenFlightNotFound() throws Exception {
         //Act + Assert
         mockMvc.perform(get("/api/flights/{id}", 99999L))
@@ -240,6 +313,7 @@ class FlightControllerIT {
     }
 
     //shouldDeleteFlight — Eliminar y verificar que ya no existe
+    @Test
     void shouldDeleteFlight() throws Exception {
         //Arrange
         Long destinoAeropuerto = createAirportAndGetId(airportRequest);
