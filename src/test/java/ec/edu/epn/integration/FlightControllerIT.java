@@ -77,7 +77,7 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
 
     private Long createAirportAndGetId(AirportRequest request) throws Exception {
         JsonNode jsonNode = objectMapper.readTree(createAirport(request)
-                .andReturn() // Lo agregamos aquí
+                .andReturn() 
                 .getResponse().getContentAsString());
         return jsonNode.get("id").asLong();
     }
@@ -91,7 +91,7 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
 
     private Long createFlightAndGetId(FlightRequest request) throws Exception {
         JsonNode jsonNode = objectMapper.readTree(createFlight(request)
-                .andReturn() // Lo agregamos aquí
+                .andReturn() 
                 .getResponse().getContentAsString());
         return jsonNode.get("id").asLong();
     }
@@ -113,8 +113,8 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
                 .content(objectMapper.writeValueAsString(flightRequest)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.flightNumber").value("FL6767"))
-            .andExpect(jsonPath("$.departureAirport.id").value(destinoAeropuerto))
-            .andExpect(jsonPath("$.arrivalAirport.id").value(llegadaAeropuerto))
+            .andExpect(jsonPath("$.origin.id").value(destinoAeropuerto))
+            .andExpect(jsonPath("$.destination.id").value(llegadaAeropuerto))
             .andExpect(jsonPath("$.status").value("PROGRAMADO"))
             .andExpect(jsonPath("$.id").isNumber());
     }
@@ -140,7 +140,7 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
         mockMvc.perform(post("/api/flights")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(flightRequest)))
-            .andExpect(status().isConflict());
+            .andExpect(status().isBadRequest());
     }
 
     //shouldRejectArrivalBeforeDeparture — Validar que la llegada no sea antes de la salida
@@ -159,7 +159,7 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(flightRequest)))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message", containsString("La hora de llegada no puede ser antes de la hora de salida")));
+            .andExpect(jsonPath("$.message", containsString("La llegada no puede ser antes de la salida")));
     }
 
     //shouldFindAllFlights — Listar todos los vuelos
@@ -207,8 +207,8 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(flightId))
             .andExpect(jsonPath("$.flightNumber").value("FL6767"))
-            .andExpect(jsonPath("$.departureAirport.id").value(destinoAeropuerto))
-            .andExpect(jsonPath("$.arrivalAirport.id").value(llegadaAeropuerto))
+            .andExpect(jsonPath("$.origin.id").value(destinoAeropuerto))
+            .andExpect(jsonPath("$.destination.id").value(llegadaAeropuerto))
             .andExpect(jsonPath("$.status").value("PROGRAMADO"));
     }
 
@@ -228,8 +228,8 @@ private ResultActions createAirport(AirportRequest request) throws Exception {
         mockMvc.perform(get("/api/flights/number/{flightNumber}", "FL6767"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.flightNumber").value("FL6767"))
-            .andExpect(jsonPath("$.departureAirport.id").value(destinoAeropuerto))
-            .andExpect(jsonPath("$.arrivalAirport.id").value(llegadaAeropuerto))
+            .andExpect(jsonPath("$.origin.id").value(destinoAeropuerto))
+            .andExpect(jsonPath("$.destination.id").value(llegadaAeropuerto))
             .andExpect(jsonPath("$.status").value("PROGRAMADO"));
     }
 

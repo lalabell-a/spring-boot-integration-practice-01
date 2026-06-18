@@ -4,9 +4,12 @@ import ec.edu.epn.dto.FlightRequest;
 import ec.edu.epn.model.Flight;
 import ec.edu.epn.service.FlightService;
 import jakarta.validation.Valid;
+
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,9 +49,10 @@ public class FlightController {
         return ResponseEntity.ok(flightService.findByStatus(status));
     }
 
-    @GetMapping("/between")
-    public ResponseEntity<List<Flight>> findBetweenDates(@RequestParam LocalDateTime start,
-                                                          @RequestParam LocalDateTime end) {
+@GetMapping("/dates") 
+    public ResponseEntity<List<Flight>> findBetweenDates(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
         return ResponseEntity.ok(flightService.findFlightsBetweenDates(start, end));
     }
 

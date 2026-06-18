@@ -10,6 +10,8 @@ public class JacksonConfig {
 
     @Bean
     public Module hibernateModule() {
-        return new Hibernate5JakartaModule();
+        Hibernate5JakartaModule module = new Hibernate5JakartaModule();
+        module.enable(Hibernate5JakartaModule.Feature.FORCE_LAZY_LOADING);
+        return module;
     }
 }

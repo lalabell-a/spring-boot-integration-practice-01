@@ -33,11 +33,12 @@ class PassengerControllerIT {
     @Autowired
     private PassengerRepository passengerRepository;
 
-    private PassengerRequest passengerRequest(String firstName, String lastName, String email) {
+    private PassengerRequest passengerRequest(String firstName, String lastName, String email, String passport) {
         PassengerRequest request = new PassengerRequest();
         request.setFirstName(firstName);
         request.setLastName(lastName);
         request.setEmail(email);
+        request.setPassportNumber(passport);
         return request;
     }
 
@@ -75,7 +76,7 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
     @Test
     void shouldCreatePassenger() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
 
         //Act + Assert
         mockMvc.perform(post("/api/passengers")
@@ -88,8 +89,8 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
     @Test
     void shouldRejectDuplicateEmail() throws Exception {
         //Arrange
-        PassengerRequest request1 = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
-        PassengerRequest request2 = passengerRequest("Angel", "Pastaz", "sebastian.sarasti@gmail.com");
+        PassengerRequest request1 = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
+        PassengerRequest request2 = passengerRequest("Angel", "Pastaz", "sebastian.sarasti@gmail.com", "DEF456");
         //Act + Assert
         mockMvc.perform(post("/api/passengers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -103,15 +104,15 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
-                .andExpect(jsonPath("$.message", containsString("El email ya existe")));
+            .andExpect(jsonPath("$.message").value("El email ya está registrado: sebastian.sarasti@gmail.com"));
     }
 
     // shouldFindAllPassengers — Listar todos los pasajeros
     @Test
     void shouldFindAllPassengers() throws Exception {
         //Arrange
-        PassengerRequest request1 = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
-        PassengerRequest request2 = passengerRequest("Angel", "Pastaz", "angel.pastaz@gmail.com");
+        PassengerRequest request1 = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
+        PassengerRequest request2 = passengerRequest("Angel", "Pastaz", "angel.pastaz@gmail.com", "DEF456");
 
         //Act + Assert
         mockMvc.perform(post("/api/passengers")
@@ -133,48 +134,51 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
     @Test
     void shouldFindPassengerById() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
         Long passengerId = createPassengerAndGetId(request);
 
         //Act + Assert
         mockMvc.perform(get("/api/passengers/{id}", passengerId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(passengerId))
-                .andExpect(jsonPath("$.name").value("Sebastian"))
-                .andExpect(jsonPath("$.surname").value("Sarasti"))
-                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"));
+                .andExpect(jsonPath("$.firstName").value("Sebastian"))
+                .andExpect(jsonPath("$.lastName").value("Sarasti"))
+                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"))
+                .andExpect(jsonPath("$.passportNumber").value("ABC123"));
     }
 
     // shouldFindPassengerByEmail — Buscar por email
     @Test
     void shouldFindPassengerByEmail() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
         Long passengerId = createPassengerAndGetId(request);
 
         //Act + Assert
         mockMvc.perform(get("/api/passengers/email/{email}", "sebastian.sarasti@gmail.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(passengerId))
-                .andExpect(jsonPath("$.name").value("Sebastian"))
-                .andExpect(jsonPath("$.surname").value("Sarasti"))
-                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"));
+                .andExpect(jsonPath("$.firstName").value("Sebastian"))
+                .andExpect(jsonPath("$.lastName").value("Sarasti"))
+                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"))
+                .andExpect(jsonPath("$.passportNumber").value("ABC123"));
     }
 
     // shouldFindPassengerByPassportNumber — Buscar por número de pasaporte
     @Test
     void shouldFindPassengerByPassportNumber() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
         Long passengerId = createPassengerAndGetId(request);
 
         //Act + Assert
         mockMvc.perform(get("/api/passengers/passport/{passportNumber}", "ABC123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(passengerId))
-                .andExpect(jsonPath("$.name").value("Sebastian"))
-                .andExpect(jsonPath("$.surname").value("Sarasti"))
-                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"));
+                .andExpect(jsonPath("$.firstName").value("Sebastian"))
+                .andExpect(jsonPath("$.lastName").value("Sarasti"))
+                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"))
+                .andExpect(jsonPath("$.passportNumber").value("ABC123"));
     }
 
     // shouldReturn404WhenPassengerNotFound — Pasajero inexistente → HTTP 404
@@ -192,7 +196,7 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
     @Test
     void shouldUpdatePassenger() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123" );
         Long passengerId = createPassengerAndGetId(request);
 
         //Act + Assert
@@ -201,16 +205,17 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(passengerId))
-                .andExpect(jsonPath("$.name").value("Sebastian"))
-                .andExpect(jsonPath("$.surname").value("Sarasti"))
-                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"));
+                .andExpect(jsonPath("$.firstName").value("Sebastian"))
+                .andExpect(jsonPath("$.lastName").value("Sarasti"))
+                .andExpect(jsonPath("$.email").value("sebastian.sarasti@gmail.com"))
+                .andExpect(jsonPath("$.passportNumber").value("ABC123"));
     }
 
     // shouldDeletePassenger — Eliminar y verificar que ya no existe
     @Test
     void shouldDeletePassenger() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "sebastian.sarasti@gmail.com", "ABC123");
         Long passengerId = createPassengerAndGetId(request);
 
         //Act + Assert
@@ -222,7 +227,7 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
     @Test
     void shouldRejectInvalidEmail() throws Exception {
         //Arrange
-        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "invalid-email");
+        PassengerRequest request = passengerRequest("Sebastian", "Sarasti", "invalid-email", "ABC123");
 
         //Act + Assert
         mockMvc.perform(post("/api/passengers")
@@ -230,7 +235,7 @@ private ResultActions createPassenger(PassengerRequest request) throws Exception
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.error").value("Bad Request"))
-                .andExpect(jsonPath("$.message", containsString("El email no es válido")));
+                .andExpect(jsonPath("$.error").value("Validation Error"))
+            .andExpect(jsonPath("$.message", containsString("El email debe ser válido")));
     }
 }
